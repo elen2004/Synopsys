@@ -1,0 +1,102 @@
+import os
+import csv
+from datetime import datetime
+
+EXPENSE_FILE = "expenses.csv"
+
+# Updated categories (Removed "Others")
+CATEGORIES = [
+    "Food",
+    "Transport",
+    "Shopping",
+    "Entertainment",
+    "Utilities",
+    "Healthcare",
+    "Education"
+]
+
+def initialize_file():
+    if not os.path.exists(EXPENSE_FILE):
+        with open(EXPENSE_FILE, "w", newline="") as file:
+            writer = csv.writer(file)
+            writer.writerow(["Date", "Category", "Amount"])
+
+def add_expense():
+    print("\nChoose a category:")
+    for idx, cat in enumerate(CATEGORIES, start=1):
+        print(f"{idx}. {cat}")
+    try:
+        choice = int(input("Enter category number: "))
+        if 1 <= choice <= len(CATEGORIES):
+            category = CATEGORIES[choice - 1]
+        else:
+            print("❌ Invalid category number.\n")
+            return
+        amount = float(input("Enter amount: "))
+        date = datetime.now().strftime("%Y-%m-%d")
+
+        with open(EXPENSE_FILE, "a", newline="") as file:
+            writer = csv.writer(file)
+            writer.writerow([date, category, amount])
+        print(f"✅ Added {amount:.2f} to {category} on {date}\n")
+    except ValueError:
+        print("❌ Invalid input.\n")
+
+def load_expenses(month_filter=None):
+    expenses = {}
+    if not os.path.exists(EXPENSE_FILE):
+        return expenses
+    with open(EXPENSE_FILE, "r") as file:
+        reader = csv.DictReader(file)
+        for row in reader:
+            date = row["Date"]
+            category = row["Category"]
+            try:
+                amount = float(row["Amount"])
+            except ValueError:
+                continue
+            if month_filter and not date.startswith(month_filter):
+                continue
+            expenses[category] = expenses.get(category, 0) + amount
+    return expenses
+
+def display_summary():
+    month = input("Enter month to filter (YYYY-MM) or press Enter to show all: ").strip()
+    expenses = load_expenses(month_filter=month if month else None)
+
+    if not expenses:
+        print("❗ No matching expenses found.\n")
+        return
+
+    max_len = max(len(cat) for cat in expenses)
+    max_amt = max(expenses.values())
+    scale = 40 / max_amt if max_amt > 0 else 1
+
+    print("\n📊 Expense Summary (ASCII Bar Chart):")
+    print("-" * 60)
+    for category, amount in sorted(expenses.items(), key=lambda x: x[1], reverse=True):
+        bar = "#" * int(amount * scale)
+        print(f"{category.ljust(max_len)} | {bar} ({amount:.2f})")
+    print("-" * 60 + "\n")
+
+def menu():
+    initialize_file()
+    while True:
+        print("=== ADVANCED EXPENSE TRACKER ===")
+        print("1. Add Expense")
+        print("2. View Summary")
+        print("3. Exit")
+        choice = input("Choose an option: ").strip()
+
+        if choice == '1':
+            add_expense()
+        elif choice == '2':
+            display_summary()
+        elif choice == '3':
+            print("👋 Goodbye!")
+            break
+        else:
+            print("❌ Invalid choice.\n")
+
+if __name__ == "__main__":
+    menu()
