@@ -1,102 +1,103 @@
-import os
 import csv
-from datetime import datetime
+import os
 
-EXPENSE_FILE = "expenses.csv"
+FILENAME = "expenses.csv"
 
-# Updated categories (Removed "Others")
+# Predefined expense categories
 CATEGORIES = [
     "Food",
     "Transport",
     "Shopping",
+    "Healthcare",
     "Entertainment",
     "Utilities",
-    "Healthcare",
     "Education"
 ]
 
-def initialize_file():
-    if not os.path.exists(EXPENSE_FILE):
-        with open(EXPENSE_FILE, "w", newline="") as file:
+def create_file():
+    """Create the CSV file with header if it doesn't exist"""
+    if not os.path.isfile(FILENAME):
+        with open(FILENAME, mode='w', newline='') as file:
             writer = csv.writer(file)
-            writer.writerow(["Date", "Category", "Amount"])
+            writer.writerow(["Category", "Amount"])  # Only category and amount
 
 def add_expense():
-    print("\nChoose a category:")
-    for idx, cat in enumerate(CATEGORIES, start=1):
-        print(f"{idx}. {cat}")
+    """Add a new expense entry"""
+    print("\nChoose category:")
+    for i, cat in enumerate(CATEGORIES, start=1):
+        print(f"{i}. {cat}")
+        
     try:
-        choice = int(input("Enter category number: "))
-        if 1 <= choice <= len(CATEGORIES):
-            category = CATEGORIES[choice - 1]
-        else:
-            print("❌ Invalid category number.\n")
+        category_index = int(input("Enter category number: ")) - 1
+        if category_index not in range(len(CATEGORIES)):
+            print("Invalid category selection.")
             return
-        amount = float(input("Enter amount: "))
-        date = datetime.now().strftime("%Y-%m-%d")
-
-        with open(EXPENSE_FILE, "a", newline="") as file:
-            writer = csv.writer(file)
-            writer.writerow([date, category, amount])
-        print(f"✅ Added {amount:.2f} to {category} on {date}\n")
+        category = CATEGORIES[category_index]
     except ValueError:
-        print("❌ Invalid input.\n")
-
-def load_expenses(month_filter=None):
-    expenses = {}
-    if not os.path.exists(EXPENSE_FILE):
-        return expenses
-    with open(EXPENSE_FILE, "r") as file:
-        reader = csv.DictReader(file)
-        for row in reader:
-            date = row["Date"]
-            category = row["Category"]
-            try:
-                amount = float(row["Amount"])
-            except ValueError:
-                continue
-            if month_filter and not date.startswith(month_filter):
-                continue
-            expenses[category] = expenses.get(category, 0) + amount
-    return expenses
-
-def display_summary():
-    month = input("Enter month to filter (YYYY-MM) or press Enter to show all: ").strip()
-    expenses = load_expenses(month_filter=month if month else None)
-
-    if not expenses:
-        print("❗ No matching expenses found.\n")
+        print("Invalid input. Please enter a number.")
         return
 
-    max_len = max(len(cat) for cat in expenses)
-    max_amt = max(expenses.values())
-    scale = 40 / max_amt if max_amt > 0 else 1
+    try:
+        amount = float(input("Enter amount: "))
+    except ValueError:
+        print("Invalid amount. Please enter a numeric value.")
+        return
 
-    print("\n📊 Expense Summary (ASCII Bar Chart):")
-    print("-" * 60)
-    for category, amount in sorted(expenses.items(), key=lambda x: x[1], reverse=True):
-        bar = "#" * int(amount * scale)
-        print(f"{category.ljust(max_len)} | {bar} ({amount:.2f})")
-    print("-" * 60 + "\n")
+    with open(FILENAME, mode='a', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow([category, amount])  # Only category and amount
+    
+    print("Expense added successfully!")
 
-def menu():
-    initialize_file()
+def display_summary():
+    """Display an ASCII bar chart summary of expenses"""
+    try:
+        with open(FILENAME, mode='r') as file:
+            reader = csv.reader(file)
+            next(reader)  # skip header
+            summary = {cat: 0 for cat in CATEGORIES}
+
+            for row in reader:
+                try:
+                    category = row[0]
+                    amount = float(row[1])
+                    if category in summary:
+                        summary[category] += amount
+                except (ValueError, IndexError):
+                    continue  # skip invalid rows
+
+        print("\nExpense Summary:")
+        print("----------------")
+        for category in CATEGORIES:
+            amount = summary[category]
+            bar_length = int(amount)
+            # Optional: cap bar length for readability
+            # bar_length = min(bar_length, 50)
+            bar = '#' * bar_length
+            print(f"{category:<15} | {bar} ({amount:.2f})")
+
+    except FileNotFoundError:
+        print("No expense data found. Add some expenses first!")
+
+def main():
+    create_file()
     while True:
-        print("=== ADVANCED EXPENSE TRACKER ===")
+        print("\nExpense Tracker Menu")
         print("1. Add Expense")
         print("2. View Summary")
         print("3. Exit")
-        choice = input("Choose an option: ").strip()
 
-        if choice == '1':
+        choice = input("Enter your choice (1-3): ")
+
+        if choice == "1":
             add_expense()
-        elif choice == '2':
+        elif choice == "2":
             display_summary()
-        elif choice == '3':
-            print("👋 Goodbye!")
+        elif choice == "3":
+            print("Goodbye!")
             break
         else:
-            print("❌ Invalid choice.\n")
+            print("Invalid choice. Please try again.")
 
 if __name__ == "__main__":
-    menu()
+    main()
